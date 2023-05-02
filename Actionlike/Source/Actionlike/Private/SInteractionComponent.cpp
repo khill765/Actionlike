@@ -3,6 +3,7 @@
 
 #include "SInteractionComponent.h"
 #include "SGameplayInterface.h"
+#include "DrawDebugHelpers.h"
 
 // Sets default values for this component's properties
 USInteractionComponent::USInteractionComponent()
@@ -23,7 +24,7 @@ void USInteractionComponent::BeginPlay()
 	// ...
 	
 }
-
+  
 
 // Called every frame
 void USInteractionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -41,29 +42,51 @@ void USInteractionComponent::PrimaryInteract()
 	AActor* MyOwner = GetOwner();
 
 
-	FVector Eyelocation;
-	FRotator EyeRotation;
-	MyOwner->GetActorEyesViewPoint(Eyelocation, EyeRotation);
+	 FVector Eyelocation;
+	 FRotator EyeRotation;
+	 MyOwner->GetActorEyesViewPoint(Eyelocation, EyeRotation);
 
-	FVector End = Eyelocation + (EyeRotation.Vector() * 1000);
+	 FVector End = Eyelocation + (EyeRotation.Vector() * 1000);
 
-	FHitResult Hit;
-	GetWorld()->LineTraceSingleByObjectType(Hit, Eyelocation, End, ObjectQueryParams);
+	// FHitResult Hit;
+	// bool bBlockingHit = GetWorld()->LineTraceSingleByObjectType(Hit, Eyelocation, End, ObjectQueryParams);
 
+	 TArray<FHitResult> Hits;
 
-	AActor* HitActor = Hit.GetActor();
-	if (HitActor)
+	float Radius = 30.f;
+
+	FCollisionShape Shape;
+	Shape.SetSphere(Radius);
+
+	bool bBlockingHit = GetWorld()->SweepMultiByObjectType(Hits, Eyelocation, End, FQuat::Identity, ObjectQueryParams, Shape);
+
+	FColor LineColor = bBlockingHit ? FColor::Green : FColor::Red;
+
+	for (FHitResult Hit : Hits)
 	{
-		if	(HitActor->Implements<USGameplayInterface>())
+		AActor* HitActor = Hit.GetActor();
+		if (HitActor)
 		{
+			if (HitActor->Implements<USGameplayInterface>())
+			{
 
-			APawn* MyPawn = Cast<APawn>(MyOwner);
+				APawn* MyPawn = Cast<APawn>(MyOwner);
 
 
-			ISGameplayInterface::Execute_Interact(HitActor, MyPawn);
+				ISGameplayInterface::Execute_Interact(HitActor, MyPawn);
+				break;
+			}
+
 		}
 
+		DrawDebugSphere(GetWorld(), Hit.ImpactPoint, Radius, 32, LineColor, false, 2.0f);
 	}
+
+
+	DrawDebugLine(GetWorld(), Eyelocation, End, LineColor, false, 2.0f, 0, 2.0f);
+
+	
+
 
 }
 
